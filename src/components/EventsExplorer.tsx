@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { toPng } from "html-to-image";
+import { Download } from "lucide-react";
+import { useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Calendar, 
@@ -63,7 +66,22 @@ export default function EventsExplorer() {
 
   // ✅ new state for ticket
   const [ticketCode, setTicketCode] = useState<string | null>(null);
+  const ticketRef = useRef<HTMLDivElement | null>(null);
 
+  const handleDownloadTicket = async () => {
+  if (ticketRef.current) {
+    try {
+      const dataUrl = await toPng(ticketRef.current);
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `ticket-${ticketCode}.png`;
+      link.click();
+    } catch (error) {
+      console.error("Failed to download ticket:", error);
+      toast.error("Could not download ticket. Try again.");
+    }
+  }
+  };
   // Load events and categories
   useEffect(() => {
     const loadData = async () => {
@@ -388,26 +406,13 @@ export default function EventsExplorer() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 pt-2">
-                      <Button
-                        onClick={() => handleRegister(event.id)}
-                        disabled={!event.isActive || registering === event.id}
-                        className="flex-1"
-                        size="sm"
-                      >
-                        {registering === event.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <ArrowRight className="h-4 w-4 mr-2" />
-                        )}
-                        {registering === event.id ? "Registering..." : "Register"}
-                      </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="px-3"
+                        className="w-full"
                         onClick={() => handleShowEventDetail(event)}
                       >
-                        <ExternalLink className="h-4 w-4" />
+                        View Details & Register
                       </Button>
                     </div>
                   </CardContent>
@@ -523,29 +528,51 @@ export default function EventsExplorer() {
 
         {/* Action Section */}
         <div className="space-y-3">
-          {ticketCode ? (
-            <div className="flex flex-col items-center space-y-3 py-4 border rounded-xl bg-gray-50 dark:bg-gray-900">
-              <QRCode value={ticketCode} size={128} />
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Ticket Code: {ticketCode}
-              </p>
-            </div>
-          ) : (
-            <Button
-              onClick={() => handleRegister(selectedEvent.id)}
-              disabled={!selectedEvent.isActive || registering === selectedEvent.id}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl"
-              size="lg"
-            >
-              {registering === selectedEvent.id ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <ArrowRight className="h-4 w-2 mr-2" />
-              )}
-              {registering === selectedEvent.id ? "Registering..." : "Register for Event"}
-            </Button>
-          )}
-        </div>
+  {ticketCode ? (
+  <div className="flex flex-col items-center space-y-4 py-4 border rounded-xl bg-gray-50 dark:bg-gray-900">
+    {/* Ticket Content (QR + code) */}
+    <div ref={ticketRef} className="flex flex-col items-center space-y-3">
+      <QRCode value={ticketCode} size={128} />
+      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        Ticket Code: {ticketCode}
+      </p>
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        {selectedEvent.title} — {formatDetailedDate(selectedEvent.date)}
+      </p>
+    </div>
+
+    {/* Download Button */}
+    <Button
+      onClick={handleDownloadTicket}
+      className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-xl"
+    >
+      <Download className="h-4 w-4" />
+      Download Ticket
+    </Button>
+
+    {/* Warning Message */}
+    <p className="text-xs text-red-600 dark:text-red-400 text-center max-w-xs">
+      ⚠️ Please download your ticket now or take a screenshot.  
+      You’ll need this QR code for entry.
+    </p>
+  </div>
+) : (
+  <Button
+    onClick={() => handleRegister(selectedEvent.id)}
+    disabled={!selectedEvent.isActive || registering === selectedEvent.id}
+    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl"
+    size="lg"
+  >
+    {registering === selectedEvent.id ? (
+      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+    ) : (
+      <ArrowRight className="h-4 w-2 mr-2" />
+    )}
+    {registering === selectedEvent.id ? "Registering..." : "Register for Event"}
+  </Button>
+)}
+
+</div>
       </div>
     </div>
   </div>
