@@ -55,6 +55,7 @@ interface Registration {
 
 export default function OrganizerDashboard() {
   const [activeTab, setActiveTab] = useState<"overview" | "events" | "attendees">("overview");
+  const [selectedEventTitle, setSelectedEventTitle] = useState<string | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,11 +88,14 @@ export default function OrganizerDashboard() {
           setEvents(eventsData);
         }
 
+
+
         // Fetch all registrations for overview
         const registrationsRes = await fetch("/api/registrations?limit=100");
         if (registrationsRes.ok) {
           const registrationsData = await registrationsRes.json();
           setRegistrations(registrationsData);
+          console.log(registrationsData);
         }
       } catch (error) {
         console.error("Error loading data:", error);
@@ -241,22 +245,24 @@ export default function OrganizerDashboard() {
     }
   };
 
-  const loadEventAttendees = async (eventId: number) => {
-    try {
-      const response = await fetch(`/api/events/${eventId}/attendees`);
-      if (response.ok) {
-        const attendees = await response.json();
-        setRegistrations(attendees);
-        setSelectedEventId(eventId);
-        setActiveTab("attendees");
-      } else {
-        toast.error("Failed to load attendees");
-      }
-    } catch (error) {
-      console.error("Load attendees error:", error);
+  const loadEventAttendees = async (eventId: number, eventTitle: string) => {
+  try {
+    const response = await fetch(`/api/events/${eventId}/attendees`);
+    if (response.ok) {
+      const attendees = await response.json();
+      setRegistrations(attendees);
+      setSelectedEventId(eventId);
+      setSelectedEventTitle(eventTitle); // ✅ save title
+      setActiveTab("attendees");
+    } else {
       toast.error("Failed to load attendees");
     }
-  };
+  } catch (error) {
+    console.error("Load attendees error:", error);
+    toast.error("Failed to load attendees");
+  }
+};
+
 
   const updateAttendance = async (registrationId: number, status: string) => {
     try {
@@ -292,8 +298,8 @@ export default function OrganizerDashboard() {
     const csvContent = [
       ["Name", "Email", "Event", "Registration Date", "Attendance Status"],
       ...relevantRegistrations.map(reg => [
-        reg.userName,
-        reg.userEmail,
+        reg.userName || reg.name,
+        reg.userEmail || reg.email,
         reg.eventTitle,
         new Date(reg.registeredAt).toLocaleDateString(),
         reg.attendanceStatus
@@ -626,7 +632,7 @@ export default function OrganizerDashboard() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => loadEventAttendees(event.id)}
+                        onClick={() => loadEventAttendees(event.id, event.title)}
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         View Attendees
@@ -685,14 +691,6 @@ export default function OrganizerDashboard() {
               {selectedEventId ? `Event Attendees` : "All Attendees"}
             </h2>
             <div className="flex gap-2">
-              {selectedEventId && (
-                <Button variant="outline" onClick={() => {
-                  setSelectedEventId(null);
-                  setActiveTab("overview");
-                }}>
-                  Back to Overview
-                </Button>
-              )}
               <Button variant="outline" onClick={() => exportRegistrations(selectedEventId || undefined)}>
                 <Download className="h-4 w-4 mr-2" />
                 Export
@@ -720,17 +718,18 @@ export default function OrganizerDashboard() {
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
                               <AvatarFallback>
-                                {registration.userName.split(" ").map(n => n[0]).join("")}
+                                {/* {registration.userName.split(" ").map(n => n[0]).join("")} */}
+                                {(registration.userName || registration.name || "NA").split(" ").map(n => n[0]).join("")}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-medium">{registration.userName}</p>
+                              <p className="font-medium">{(registration.userName || registration.name)}</p>
                               <p className="text-sm text-muted-foreground">{registration.userEmail}</p>
                             </div>
                           </div>
                         </td>
                         <td className="p-4">
-                          <p className="font-medium">{registration.eventTitle}</p>
+                          <p className="font-medium">{registration.eventTitle || selectedEventTitle}</p>
                         </td>
                         <td className="p-4">
                           <p className="text-sm">{formatDate(registration.registeredAt)}</p>
@@ -809,39 +808,7 @@ export default function OrganizerDashboard() {
             </CardContent>
           </Card>
 
-          {/* Recent Registrations */}
-          <Card className="glass border-0">
-            <CardHeader>
-              <CardTitle>Recent Registrations</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {registrations.slice(0, 5).map((registration) => (
-                <div key={registration.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>
-                        {registration.userName.split(" ").map(n => n[0]).join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{registration.userName}</p>
-                      <p className="text-sm text-muted-foreground">{registration.eventTitle}</p>
-                    </div>
-                  </div>
-                  <Badge variant={
-                    registration.attendanceStatus === "present" ? "default" :
-                    registration.attendanceStatus === "absent" ? "destructive" :
-                    "secondary"
-                  }>
-                    {registration.attendanceStatus}
-                  </Badge>
-                </div>
-              ))}
-              {registrations.length === 0 && (
-                <p className="text-center text-muted-foreground py-4">No registrations yet</p>
-              )}
-            </CardContent>
-          </Card>
+        
         </div>
       )}
     </div>
