@@ -16,7 +16,10 @@ import {
   Star,
   ArrowRight,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  X,
+  Share2,
+  Heart
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -56,6 +59,8 @@ export default function EventsExplorer() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [registering, setRegistering] = useState<number | null>(null);
+  const [showEventDetail, setShowEventDetail] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   // Load events and categories
   useEffect(() => {
@@ -174,11 +179,31 @@ export default function EventsExplorer() {
     }
   };
 
+  const handleShowEventDetail = (event: Event) => {
+    setSelectedEvent(event);
+    setShowEventDetail(true);
+  };
+
+  const handleCloseEventDetail = () => {
+    setShowEventDetail(false);
+    setSelectedEvent(null);
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
+  };
+
+  const formatDetailedDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
       day: "numeric",
       year: "numeric"
     });
@@ -376,7 +401,12 @@ export default function EventsExplorer() {
                         )}
                         {registering === event.id ? "Registering..." : "Register"}
                       </Button>
-                      <Button variant="outline" size="sm" className="px-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="px-3"
+                        onClick={() => handleShowEventDetail(event)}
+                      >
                         <ExternalLink className="h-4 w-4" />
                       </Button>
                     </div>
@@ -387,6 +417,122 @@ export default function EventsExplorer() {
           )}
         </div>
       </div>
+
+      {/* Event Detail Modal */}
+      {showEventDetail && selectedEvent && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-background rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            {/* Modal Header */}
+            <div className="relative p-6 pb-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCloseEventDetail}
+                className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </Button>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white pr-12">
+                {selectedEvent.title}
+              </h1>
+            </div>
+
+            {/* Event Banner */}
+            <div className="px-6 mb-6">
+              <div className="relative h-48 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50">
+                {selectedEvent.bannerImageUrl ? (
+                  <img 
+                    src={selectedEvent.bannerImageUrl} 
+                    alt={selectedEvent.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Calendar className="h-12 w-12 text-blue-400" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="px-6 pb-6">
+              {/* Event Details */}
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                  <Calendar className="h-5 w-5 flex-shrink-0" />
+                  <span className="font-medium">{formatDetailedDate(selectedEvent.date)} at {selectedEvent.time}</span>
+                </div>
+                
+                <div className="flex items-start gap-3 text-gray-600 dark:text-gray-300">
+                  <MapPin className="h-5 w-5 flex-shrink-0 mt-0.5 text-red-500" />
+                  <span className="font-medium">{selectedEvent.venue}</span>
+                </div>
+                
+                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                  <Users className="h-5 w-5 flex-shrink-0" />
+                  <span className="font-medium">{selectedEvent.maxAttendees} attendees</span>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                    $299
+                  </span>
+                  <Badge 
+                    className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-3 py-1 rounded-full text-sm font-medium"
+                  >
+                    Business
+                  </Badge>
+                </div>
+              </div>
+
+              {/* About Section */}
+              <div className="mb-6">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
+                  About This Event
+                </h2>
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                  {selectedEvent.description || "A three-day intensive bootcamp covering business planning, funding strategies, market validation, product development, and scaling techniques. Includes one-on-one mentorship sessions, pitch practice, and networking with successful entrepreneurs and investors."}
+                </p>
+              </div>
+
+              {/* Organizer Info */}
+              {selectedEvent.organizer && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Event Organizer</h3>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={selectedEvent.organizer.avatarUrl} />
+                      <AvatarFallback className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
+                        {selectedEvent.organizer.name.split(" ").map(n => n[0]).join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white">{selectedEvent.organizer.name}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{selectedEvent.organizer.email}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                <Button
+                  onClick={() => handleRegister(selectedEvent.id)}
+                  disabled={!selectedEvent.isActive || registering === selectedEvent.id}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl"
+                  size="lg"
+                >
+                  {registering === selectedEvent.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <ArrowRight className="h-4 w-2 mr-2" />
+                  )}
+                  {registering === selectedEvent.id ? "Registering..." : "Register for Event"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
