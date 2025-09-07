@@ -25,11 +25,21 @@ interface Message {
   timestamp: Date;
 }
 
-interface AIChatAssistantProps {
-  isOrganizer?: boolean;
+interface EventItem {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  venue: string;
+  description?: string;
 }
 
-export default function AIChatAssistant({ isOrganizer = false }: AIChatAssistantProps) {
+interface AIChatAssistantProps {
+  isOrganizer?: boolean;
+  events: EventItem[]; // 🔹 pass all events here
+}
+
+export default function AIChatAssistant({ isOrganizer = false, events }: AIChatAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -45,15 +55,15 @@ export default function AIChatAssistant({ isOrganizer = false }: AIChatAssistant
     scrollToBottom();
   }, [messages]);
 
-  // Initialize with welcome message
+  // Welcome message
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       const welcomeMessage: Message = {
         id: "welcome",
         role: "assistant",
         content: isOrganizer 
-          ? "👋 Hi! I'm your EventEase AI assistant. I can help you with event management, attendee questions, and organizing tips. What can I help you with today?"
-          : "👋 Hello! I'm your EventEase AI assistant. I can help you find events, answer questions about registrations, and provide event details. How can I assist you today?",
+          ? "👋 Hi Organizer! I can help you create/manage events, generate event descriptions, and handle attendee queries."
+          : "👋 Hello! I can help you find events, answer registration questions, and give event details. Ask me about any event!",
         timestamp: new Date()
       };
       setMessages([welcomeMessage]);
@@ -75,10 +85,10 @@ export default function AIChatAssistant({ isOrganizer = false }: AIChatAssistant
     setLoading(true);
 
     try {
-      // Simulate AI response (replace with actual AI integration)
+      // Simulate AI response
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const aiResponse = generateResponse(input.trim(), isOrganizer);
+      const aiResponse = generateResponse(input.trim(), isOrganizer, events);
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -96,62 +106,64 @@ export default function AIChatAssistant({ isOrganizer = false }: AIChatAssistant
     }
   };
 
-  const generateResponse = (query: string, isOrganizer: boolean): string => {
+  const generateResponse = (query: string, isOrganizer: boolean, events: EventItem[]): string => {
     const lowerQuery = query.toLowerCase();
 
-    // Event-related queries
-    if (lowerQuery.includes("event") || lowerQuery.includes("workshop") || lowerQuery.includes("seminar")) {
-      if (isOrganizer) {
-        return "As an organizer, you can create events through your dashboard. Make sure to include compelling descriptions, clear venues, and appropriate capacity limits. Would you like tips on promoting your events or managing registrations?";
-      } else {
-        return "You can discover events on the main page. Use the search and filter options to find events that interest you. Once you find an event, simply click 'Register' to sign up. Your registered events will appear in your dashboard.";
+    // 🔹 Event matching
+    const matchedEvent = events.find(e =>
+      e.title.toLowerCase().includes(lowerQuery) ||
+      e.description?.toLowerCase().includes(lowerQuery) ||
+      e.venue.toLowerCase().includes(lowerQuery) ||
+      lowerQuery.includes(e.title.toLowerCase().split(" ")[0])
+    );
+
+    if (matchedEvent) {
+      return `📢 Event: ${matchedEvent.title}
+📅 Date: ${matchedEvent.date} at ${matchedEvent.time}
+📍 Venue: ${matchedEvent.venue}
+ℹ️ ${matchedEvent.description || "No description available yet."}`;
+    }
+
+    // 🔹 Organizer: Auto-generate event description
+    if (isOrganizer) {
+      if (lowerQuery.startsWith("generate description")) {
+        const topic = query.replace(/generate description/i, "").trim() || "event";
+        return `✨ Auto-generated description for ${topic}:\nA fun and engaging ${topic} where participants can collaborate, showcase their skills, and learn from peers.`;
+      }
+      if (query.split(" ").length === 1) {
+        return `✨ "${query}" sounds great! Here's a short description:\nAn exciting ${query} where participants come together to innovate, compete, and learn.`;
       }
     }
 
-    // Registration queries
-    if (lowerQuery.includes("register") || lowerQuery.includes("sign up")) {
-      if (isOrganizer) {
-        return "You can view all registrations for your events in the Organizer Dashboard. Track attendance, export registration data to CSV, and mark attendees as present or absent during events.";
-      } else {
-        return "To register for an event, browse the events page and click the 'Register' button on any event that interests you. You'll need to be logged in to register. Your registrations will be tracked in your user dashboard.";
-      }
+    // 🔹 Website FAQs
+    if (lowerQuery.includes("register")) {
+      return isOrganizer
+        ? "📋 As an organizer, view/manage registrations in your dashboard."
+        : "✅ To register, open the event page and click 'View Details & Register'. Your ticket will be generated with a QR code.";
     }
 
-    // Dashboard queries
+    if (lowerQuery.includes("ticket") || lowerQuery.includes("qr")) {
+      return "🎟️ After registering for any event, you’ll receive an on-screen QR ticket which you can download or screenshot for entry.";
+    }
+
     if (lowerQuery.includes("dashboard")) {
-      if (isOrganizer) {
-        return "Your Organizer Dashboard shows event statistics, lets you create/edit events, manage attendees, and export data. You can track attendance rates and view recent registrations to understand engagement.";
-      } else {
-        return "Your User Dashboard shows your registered events, attendance history, and achievement badges. You can also update your profile settings and track your attendance statistics.";
-      }
+      return isOrganizer
+        ? "📊 Your Organizer Dashboard shows event stats, registrations, and lets you manage attendees."
+        : "📌 Your User Dashboard shows your registered events, tickets, and attendance history.";
     }
 
-    // Account queries
     if (lowerQuery.includes("account") || lowerQuery.includes("profile")) {
-      return "You can update your profile in the dashboard. Change your name, upload an avatar, and view your account statistics. Note that email addresses cannot be changed for security reasons.";
+      return "👤 You can update your profile (name, avatar, preferences) in the dashboard. Email cannot be changed for security.";
     }
 
-    // Help queries
     if (lowerQuery.includes("help") || lowerQuery.includes("how")) {
-      if (isOrganizer) {
-        return "Here are some organizer tips:\n• Create engaging event descriptions\n• Set realistic capacity limits\n• Use high-quality banner images\n• Track attendance during events\n• Export data for analysis\n\nWhat specific area would you like help with?";
-      } else {
-        return "Here's how to get started:\n• Browse events on the home page\n• Use filters to find relevant events\n• Register for events you're interested in\n• Check your dashboard for upcoming events\n• Build your attendance streak!\n\nWhat else would you like to know?";
-      }
+      return isOrganizer
+        ? "💡 Organizer Tips:\n• Write engaging event descriptions\n• Track registrations\n• Export attendee data\n• Promote events with clear details"
+        : "🙋 You can:\n• Browse events on the homepage\n• Use filters/search\n• Register for events\n• View tickets in your dashboard";
     }
 
-    // Default responses
-    const defaultResponses = isOrganizer ? [
-      "That's an interesting question! As an organizer, you might want to focus on creating engaging events and building your community. Is there a specific aspect of event management you'd like to explore?",
-      "I'm here to help with your event organization needs. Whether it's about creating events, managing attendees, or understanding analytics, I'm ready to assist!",
-      "Great question! For organizers, success often comes from understanding your audience and creating valuable experiences. What would you like to know more about?"
-    ] : [
-      "That's a great question! I'm here to help you make the most of EventEase. Whether you're looking for events or need help with registration, I'm ready to assist!",
-      "Interesting! EventEase offers many opportunities to discover and participate in exciting events. What specific area would you like to explore?",
-      "I'd love to help you with that! There's so much to discover on EventEase. Are you looking for specific types of events or need help with navigation?"
-    ];
-
-    return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+    // 🔹 Default fallback
+    return "🤔 I couldn’t find details for that. Try asking about events (e.g., 'When is the coding contest?') or website features (like registration, tickets, dashboard).";
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -181,7 +193,7 @@ export default function AIChatAssistant({ isOrganizer = false }: AIChatAssistant
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-50 w-96 max-w-[calc(100vw-2rem)] max-h-[80vh] flex flex-col">
           <Card className="glass-strong border-0 shadow-2xl h-full flex flex-col">
-            {/* Chat Header */}
+            {/* Header */}
             <CardHeader className="pb-3 border-b border-border/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -194,7 +206,7 @@ export default function AIChatAssistant({ isOrganizer = false }: AIChatAssistant
                       <Sparkles className="h-4 w-4 text-yellow-500" />
                     </CardTitle>
                     <p className="text-xs text-muted-foreground">
-                      {isOrganizer ? "Event Management Helper" : "Your EventEase Guide"}
+                      {isOrganizer ? "Organizer Helper" : "Your EventEase Guide"}
                     </p>
                   </div>
                 </div>
@@ -221,7 +233,7 @@ export default function AIChatAssistant({ isOrganizer = false }: AIChatAssistant
 
             {!isMinimized && (
               <>
-                {/* Messages Area */}
+                {/* Messages */}
                 <CardContent className="flex-1 overflow-hidden p-0">
                   <div className="h-80 overflow-y-auto p-4 space-y-4">
                     {messages.map((message) => (
@@ -285,14 +297,14 @@ export default function AIChatAssistant({ isOrganizer = false }: AIChatAssistant
                   </div>
                 </CardContent>
 
-                {/* Input Area */}
+                {/* Input */}
                 <div className="p-4 border-t border-border/30">
                   <div className="flex gap-2">
                     <Input
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder="Ask me anything about EventEase..."
+                      placeholder="Ask me about any event or feature..."
                       className="flex-1 bg-background/50 border-border/50 rounded-xl"
                       disabled={loading}
                     />
@@ -309,7 +321,7 @@ export default function AIChatAssistant({ isOrganizer = false }: AIChatAssistant
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2 text-center">
-                    AI responses are simulated for demo purposes
+                    AI answers based on event details & website features
                   </p>
                 </div>
               </>
