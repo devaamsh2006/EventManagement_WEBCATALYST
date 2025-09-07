@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import QRCode from "react-qr-code";   // ✅ QR code library
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,9 +18,7 @@ import {
   ArrowRight,
   Loader2,
   ExternalLink,
-  X,
-  Share2,
-  Heart
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -62,13 +61,15 @@ export default function EventsExplorer() {
   const [showEventDetail, setShowEventDetail] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
+  // ✅ new state for ticket
+  const [ticketCode, setTicketCode] = useState<string | null>(null);
+
   // Load events and categories
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         
-        // Fetch events and categories in parallel
         const [eventsRes, categoriesRes] = await Promise.all([
           fetch("/api/events?isActive=true&limit=20&sort=date&order=asc"),
           fetch("/api/categories")
@@ -97,11 +98,10 @@ export default function EventsExplorer() {
     loadData();
   }, []);
 
-  // Filter events based on search and category
+  // Filter events
   useEffect(() => {
     let filtered = events;
 
-    // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(event =>
         event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -110,9 +110,7 @@ export default function EventsExplorer() {
       );
     }
 
-    // Apply category filter (would need category mappings for full implementation)
     if (selectedCategory !== "all") {
-      // For now, we'll filter based on event title keywords
       const categoryKeywords = {
         "Technology": ["tech", "ai", "programming", "code", "hackathon", "cyber", "robot"],
         "Cultural": ["cultural", "festival", "food", "international"],
@@ -150,9 +148,7 @@ export default function EventsExplorer() {
 
       const response = await fetch("/api/registrations", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: parseInt(userData.id),
           eventId: eventId,
@@ -160,7 +156,9 @@ export default function EventsExplorer() {
       });
 
       if (response.ok) {
-        toast.success("Successfully registered for the event!");
+        const newCode = `CONF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        setTicketCode(newCode);
+        toast.success("Successfully registered! 🎟 Ticket generated.");
       } else {
         const error = await response.json();
         if (error.code === "DUPLICATE_REGISTRATION") {
@@ -182,11 +180,13 @@ export default function EventsExplorer() {
   const handleShowEventDetail = (event: Event) => {
     setSelectedEvent(event);
     setShowEventDetail(true);
+    setTicketCode(null); // reset ticket each time detail opens
   };
 
   const handleCloseEventDetail = () => {
     setShowEventDetail(false);
     setSelectedEvent(null);
+    setTicketCode(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -222,7 +222,7 @@ export default function EventsExplorer() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
+      {/* ... keep your hero, search, filters, grid code unchanged ... */}
       <div className="relative py-16 px-6 text-center">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-white/30 dark:from-slate-900/50 dark:to-slate-800/30 backdrop-blur-sm"></div>
         <div className="relative max-w-4xl mx-auto">
@@ -419,120 +419,138 @@ export default function EventsExplorer() {
       </div>
 
       {/* Event Detail Modal */}
-      {showEventDetail && selectedEvent && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-background rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            {/* Modal Header */}
-            <div className="relative p-6 pb-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCloseEventDetail}
-                className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-              >
-                <X className="h-5 w-5 text-gray-500" />
-              </Button>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white pr-12">
-                {selectedEvent.title}
-              </h1>
+{showEventDetail && selectedEvent && (
+  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="bg-white dark:bg-background rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+      {/* Modal Header */}
+      <div className="relative p-6 pb-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleCloseEventDetail}
+          className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+        >
+          <X className="h-5 w-5 text-gray-500" />
+        </Button>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white pr-12">
+          {selectedEvent.title}
+        </h1>
+      </div>
+
+      {/* Event Banner */}
+      <div className="px-6 mb-6">
+        <div className="relative h-48 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50">
+          {selectedEvent.bannerImageUrl ? (
+            <img 
+              src={selectedEvent.bannerImageUrl} 
+              alt={selectedEvent.title}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Calendar className="h-12 w-12 text-blue-400" />
             </div>
+          )}
+        </div>
+      </div>
 
-            {/* Event Banner */}
-            <div className="px-6 mb-6">
-              <div className="relative h-48 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50">
-                {selectedEvent.bannerImageUrl ? (
-                  <img 
-                    src={selectedEvent.bannerImageUrl} 
-                    alt={selectedEvent.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Calendar className="h-12 w-12 text-blue-400" />
-                  </div>
-                )}
-              </div>
-            </div>
+      <div className="px-6 pb-6">
+        {/* Event Details */}
+        <div className="space-y-4 mb-6">
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+            <Calendar className="h-5 w-5 flex-shrink-0" />
+            <span className="font-medium">
+              {formatDetailedDate(selectedEvent.date)} at {selectedEvent.time}
+            </span>
+          </div>
+          
+          <div className="flex items-start gap-3 text-gray-600 dark:text-gray-300">
+            <MapPin className="h-5 w-5 flex-shrink-0 mt-0.5 text-red-500" />
+            <span className="font-medium">{selectedEvent.venue}</span>
+          </div>
+          
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+            <Users className="h-5 w-5 flex-shrink-0" />
+            <span className="font-medium">{selectedEvent.maxAttendees} attendees</span>
+          </div>
 
-            <div className="px-6 pb-6">
-              {/* Event Details */}
-              <div className="space-y-4 mb-6">
-                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                  <Calendar className="h-5 w-5 flex-shrink-0" />
-                  <span className="font-medium">{formatDetailedDate(selectedEvent.date)} at {selectedEvent.time}</span>
-                </div>
-                
-                <div className="flex items-start gap-3 text-gray-600 dark:text-gray-300">
-                  <MapPin className="h-5 w-5 flex-shrink-0 mt-0.5 text-red-500" />
-                  <span className="font-medium">{selectedEvent.venue}</span>
-                </div>
-                
-                <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                  <Users className="h-5 w-5 flex-shrink-0" />
-                  <span className="font-medium">{selectedEvent.maxAttendees} attendees</span>
-                </div>
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-3xl font-bold text-gray-900 dark:text-white">
+              $299
+            </span>
+            <Badge 
+              className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-3 py-1 rounded-full text-sm font-medium"
+            >
+              Business
+            </Badge>
+          </div>
+        </div>
 
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                    $299
-                  </span>
-                  <Badge 
-                    className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-3 py-1 rounded-full text-sm font-medium"
-                  >
-                    Business
-                  </Badge>
-                </div>
-              </div>
+        {/* About Section */}
+        <div className="mb-6">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
+            About This Event
+          </h2>
+          <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+            {selectedEvent.description || "A three-day intensive bootcamp covering business planning, funding strategies, market validation, product development, and scaling techniques. Includes one-on-one mentorship sessions, pitch practice, and networking with successful entrepreneurs and investors."}
+          </p>
+        </div>
 
-              {/* About Section */}
-              <div className="mb-6">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
-                  About This Event
-                </h2>
-                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                  {selectedEvent.description || "A three-day intensive bootcamp covering business planning, funding strategies, market validation, product development, and scaling techniques. Includes one-on-one mentorship sessions, pitch practice, and networking with successful entrepreneurs and investors."}
+        {/* Organizer Info */}
+        {selectedEvent.organizer && (
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
+              Event Organizer
+            </h3>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={selectedEvent.organizer.avatarUrl} />
+                <AvatarFallback className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
+                  {selectedEvent.organizer.name.split(" ").map(n => n[0]).join("")}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-semibold text-gray-900 dark:text-white">
+                  {selectedEvent.organizer.name}
                 </p>
-              </div>
-
-              {/* Organizer Info */}
-              {selectedEvent.organizer && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Event Organizer</h3>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={selectedEvent.organizer.avatarUrl} />
-                      <AvatarFallback className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
-                        {selectedEvent.organizer.name.split(" ").map(n => n[0]).join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">{selectedEvent.organizer.name}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{selectedEvent.organizer.email}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="space-y-3">
-                <Button
-                  onClick={() => handleRegister(selectedEvent.id)}
-                  disabled={!selectedEvent.isActive || registering === selectedEvent.id}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl"
-                  size="lg"
-                >
-                  {registering === selectedEvent.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <ArrowRight className="h-4 w-2 mr-2" />
-                  )}
-                  {registering === selectedEvent.id ? "Registering..." : "Register for Event"}
-                </Button>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {selectedEvent.organizer.email}
+                </p>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Action Section */}
+        <div className="space-y-3">
+          {ticketCode ? (
+            <div className="flex flex-col items-center space-y-3 py-4 border rounded-xl bg-gray-50 dark:bg-gray-900">
+              <QRCode value={ticketCode} size={128} />
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Ticket Code: {ticketCode}
+              </p>
+            </div>
+          ) : (
+            <Button
+              onClick={() => handleRegister(selectedEvent.id)}
+              disabled={!selectedEvent.isActive || registering === selectedEvent.id}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl"
+              size="lg"
+            >
+              {registering === selectedEvent.id ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <ArrowRight className="h-4 w-2 mr-2" />
+              )}
+              {registering === selectedEvent.id ? "Registering..." : "Register for Event"}
+            </Button>
+          )}
         </div>
-      )}
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }

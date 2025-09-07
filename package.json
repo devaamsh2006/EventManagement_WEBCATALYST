@@ -69,6 +69,7 @@
         "motion-dom": "^12.23.12",
         "next": "15.3.5",
         "next-themes": "^0.4.6",
+        "qrcode.react": "^4.2.0",
         "qss": "^3.0.0",
         "react": "^19.0.0",
         "react-day-picker": "^9.8.0",
@@ -78,6 +79,7 @@
         "react-hook-form": "^7.60.0",
         "react-icons": "^5.5.0",
         "react-intersection-observer": "^9.16.0",
+        "react-qr-code": "^2.0.18",
         "react-resizable-panels": "^3.0.3",
         "react-responsive-masonry": "^2.7.1",
         "react-rough-notation": "^1.0.5",
@@ -97,6 +99,7 @@
     "devDependencies": {
         "@eslint/eslintrc": "^3.3.1",
         "@tailwindcss/postcss": "^4",
+        "@types/bcrypt": "^6.0.0",
         "@types/node": "^20",
         "@types/react": "^19",
         "@types/react-dom": "^19",
