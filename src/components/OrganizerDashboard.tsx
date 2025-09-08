@@ -56,6 +56,7 @@ interface Registration {
 export default function OrganizerDashboard() {
   const [activeTab, setActiveTab] = useState<"overview" | "events" | "attendees">("overview");
   const [selectedEventTitle, setSelectedEventTitle] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +115,40 @@ export default function OrganizerDashboard() {
       [e.target.name]: e.target.value
     }));
   };
+
+  const handleGenerateDescription = async () => {
+  if (!formData.title || !formData.venue) {
+    alert("Please enter the title and venue first.");
+    return;
+  }
+
+  setGenerating(true);
+
+  try {
+    const response = await fetch("/api/generate-description", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: formData.title,
+        venue: formData.venue,
+        date: formData.date,
+        time: formData.time,
+      }),
+    });
+
+    const data = await response.json();
+    setFormData((prev) => ({
+      ...prev,
+      description: data.description,
+    }));
+  } catch (error) {
+    console.error("Error generating description:", error);
+    alert("Failed to generate description.");
+  } finally {
+    setGenerating(false);
+  }
+};
+
 
   const resetForm = () => {
     setFormData({
@@ -549,18 +584,29 @@ export default function OrganizerDashboard() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  placeholder="Describe your event..."
-                  rows={3}
-                  className="bg-background/50 border-border/50"
-                  disabled={creating}
-                />
-              </div>
+  <Label htmlFor="description">Description</Label>
+  <div className="flex gap-2">
+    <Textarea
+      id="description"
+      name="description"
+      value={formData.description}
+      onChange={handleInputChange}
+      placeholder="Describe your event..."
+      rows={3}
+      className="bg-background/50 border-border/50 flex-1"
+      disabled={creating || generating}
+    />
+    <Button
+      type="button"
+      variant="outline"
+      onClick={handleGenerateDescription}
+      disabled={creating || generating}
+    >
+      {generating ? "Generating..." : "Generate Description"}
+    </Button>
+  </div>
+</div>
+
               <div className="flex gap-2 pt-4">
                 <Button type="submit" disabled={creating}>
                   {creating ? (
